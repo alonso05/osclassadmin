@@ -41,6 +41,10 @@ public class UpdateLocations {
             }
         }       
         
+        String baseUrl = prop.getProperty("base_url");
+        String username = prop.getProperty("username");
+        String password = prop.getProperty("password");
+        
     	String state = "Chiapas";
     	
     	System.out.println(System.getProperty("user.dir")+ "\\src\\test\\resources\\Municipios.xlsx");
@@ -53,9 +57,9 @@ public class UpdateLocations {
         System.out.println("Total Valid Municipalities in " + state + ": " + validMunicipalities.size());
 
         WebDriver driver = new FirefoxDriver();
-        driver.get("http://www.morrisvende.com/oc-admin");
-        driver.findElement(By.id("user_login")).sendKeys("thunderxero");
-        driver.findElement(By.id("user_pass")).sendKeys("nX8oA*d7");
+        driver.get(baseUrl + "/oc-admin");
+        driver.findElement(By.id("user_login")).sendKeys(username);
+        driver.findElement(By.id("user_pass")).sendKeys(password);
         driver.findElement(By.id("submit")).click();
         
         driver.navigate().to("http://www.morrisvende.com/oc-admin/index.php?page=settings&action=locations");
