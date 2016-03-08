@@ -1,9 +1,6 @@
 package com.osclass.test;
 
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -14,33 +11,14 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.firefox.FirefoxDriver;
 
+import com.osclass.utils.Constants;
 import com.osclass.utils.Xls_Reader;
 
 public class UpdateLocations {
-
+    
     public static void main(String[] args) throws Exception {
         
-        Properties prop = new Properties();
-        InputStream input = null;
-        String propFileName = "config.properties";
-        
-        try{
-            input = new FileInputStream(System.getProperty("user.dir")+ "\\src\\test\\resources\\" + propFileName);
-            prop.load(input);
-            
-            System.out.println(prop.getProperty("username"));
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        } finally {
-            if (input != null) {
-                try {
-                    input.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }       
-        
+        Properties prop = Constants.getProperties("config.properties");   
         String baseUrl = prop.getProperty("base_url");
         String username = prop.getProperty("username");
         String password = prop.getProperty("password");
