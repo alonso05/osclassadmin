@@ -40,7 +40,7 @@ public class UpdateLocations {
         driver.findElement(By.id("user_pass")).sendKeys(password);
         driver.findElement(By.id("submit")).click();
         
-        driver.navigate().to("http://www.morrisvende.com/oc-admin/index.php?page=settings&action=locations");
+        driver.navigate().to(baseUrl + "/oc-admin/index.php?page=settings&action=locations");
         driver.findElement(By.className("view-more")).click();
         Thread.sleep(2000);
         clickState(driver, state);
