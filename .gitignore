@@ -4,4 +4,5 @@
 
 /.settings/
 /target/
+/test-output/
 src/test/resources/config.properties
