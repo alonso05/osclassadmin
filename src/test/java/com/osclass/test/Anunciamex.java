@@ -1,5 +1,7 @@
 package com.osclass.test;
 
+import java.io.File;
+import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Properties;
@@ -11,10 +13,17 @@ import org.openqa.selenium.firefox.FirefoxDriver;
 import org.openqa.selenium.support.ui.Select;
 
 import com.osclass.utils.Constants;
+import com.osclass.utils.FileDownloader;
 import com.osclass.utils.SimpleDate;
+import com.osclass.utils.URLStatusChecker;
+import com.osclass.utils.URLStatusChecker.RequestMethod;
 
 public class Anunciamex {
     boolean limitFound = false;
+    URLStatusChecker urlChecker;
+    FileDownloader downloadTestFile;
+    Properties prop = Constants.getProperties("config.properties"); 
+    String baseUrl;
     
     public Anunciamex(){}
     
@@ -25,24 +34,35 @@ public class Anunciamex {
     
     public void navigate() throws Exception{
         SimpleDate limitDate = new SimpleDate();
-        limitDate.advanceDay(-1); //hasta ayer
+        //limitDate.advanceDay(-1); //hasta ayer
+        limitDate.advanceDay(-35); //hasta ayer
         System.out.println("Limit Date - " + limitDate.getDay() + " " + limitDate.getMonthString());
-                
-        Properties prop = Constants.getProperties("config.properties");   
+        
+        baseUrl = prop.getProperty("base_url");
         String copyUrl = prop.getProperty("copy_url");
         String category = "/listing.php?key=&page=0&category=Autos+y+Camionetas&state=Todo+Mexico";
         ///listing.php?key=&page=0&category=Autos+y+Camionetas&state=Todo+Mexico
         ///listing.php?key=&page=0&category=Motocicletas&state=Todo+Mexico
-        WebDriver driver = new FirefoxDriver();
+        WebDriver driverNav = new FirefoxDriver();
         WebDriver driverListing = new FirefoxDriver();
         WebDriver driverOsclass = new FirefoxDriver();
-        driver.get(copyUrl + category);
-        List<WebElement> listings = driver.findElements(By.xpath("//*[@class='table table-condensed table-hover']/tbody/tr"));
+        
+        urlChecker = new URLStatusChecker(driverListing);
+        downloadTestFile = new FileDownloader(driverListing);
+        
+        driverOsclass.get(baseUrl + "/oc-admin");
+        driverOsclass.findElement(By.id("user_login")).sendKeys(prop.getProperty("username"));
+        driverOsclass.findElement(By.id("user_pass")).sendKeys(prop.getProperty("password"));
+        driverOsclass.findElement(By.id("submit")).click();        
+        driverOsclass.get(baseUrl + "/oc-admin/index.php?page=items&action=post");
+        
+        driverNav.get(copyUrl + category);
+        List<WebElement> listings = driverNav.findElements(By.xpath("//*[@class='table table-condensed table-hover']/tbody/tr"));
 
         do{
             for(int i=0; i<listings.size(); i++){
                 SimpleDate pointerDate = new SimpleDate();
-                String pointerDateString =  driver.findElement(By.xpath("//*[@class='table table-condensed table-hover']/tbody/tr[" + (i+1) + "]/td/h4")).getText().trim();
+                String pointerDateString =  driverNav.findElement(By.xpath("//*[@class='table table-condensed table-hover']/tbody/tr[" + (i+1) + "]/td/h4")).getText().trim();
                 if(pointerDateString.equals("Hoy")){
                     
                 }else if(pointerDateString.equals("Ayer")){
@@ -53,9 +73,9 @@ public class Anunciamex {
                     pointerDate.setDay(Integer.parseInt(day));
                     pointerDate.setStringMoth(month);
                 }
-                String listingText =  driver.findElement(By.xpath("//*[@class='table table-condensed table-hover']/tbody/tr[" + (i+1) + "]/td[5]/a/h2")).getText().trim();
-                String listingUrl = driver.findElement(By.xpath("//*[@class='table table-condensed table-hover']/tbody/tr[" + (i+1) + "]/td[5]/a")).getAttribute("href");
-                String imagePath = driver.findElement(By.xpath("//*[@class='table table-condensed table-hover']/tbody/tr[" + (i+1) + "]/td[2]/a/img")).getAttribute("src");
+                String listingText =  driverNav.findElement(By.xpath("//*[@class='table table-condensed table-hover']/tbody/tr[" + (i+1) + "]/td[5]/a/h2")).getText().trim();
+                String listingUrl = driverNav.findElement(By.xpath("//*[@class='table table-condensed table-hover']/tbody/tr[" + (i+1) + "]/td[5]/a")).getAttribute("href");
+                String imagePath = driverNav.findElement(By.xpath("//*[@class='table table-condensed table-hover']/tbody/tr[" + (i+1) + "]/td[2]/a/img")).getAttribute("src");
                 
                 if(imagePath.contains("noImage")){
                     imagePath = "noImage";
@@ -71,7 +91,15 @@ public class Anunciamex {
                     Hashtable<String, String> hashtable = captureListing(driverListing, imagePath, listingUrl);
                     hashtable.put("imagePath", imagePath);
                     hashtable.put("description", listingText);
-                    publishNewListing(driverOsclass, hashtable);
+                    
+                    List<String> listImages = new ArrayList<String>();
+                    
+                    if(!imagePath.contains("noImage")){
+                        String urlImage = copyUrl + "/items/images/" + imagePath;
+                        listImages = downloadImages(urlImage);
+                    }
+                    
+                    publishNewListing(driverOsclass, hashtable, listImages);
                 }
                 else{
                     limitFound = true;
@@ -79,7 +107,7 @@ public class Anunciamex {
                 }
             }
             if(!limitFound)
-                driver.findElement(By.linkText("Sig")).click();
+                driverNav.findElement(By.linkText("Sig")).click();
         }while(!limitFound);
     }
     
@@ -107,16 +135,8 @@ public class Anunciamex {
         return hashtable;
     }
     
-    public void publishNewListing(WebDriver driver, Hashtable<String, String> hashtable){
-        Properties prop = Constants.getProperties("config.properties");   
-        String baseUrl = prop.getProperty("base_url");
-        
-        driver.get(baseUrl + "/oc-admin");
-        driver.findElement(By.id("user_login")).sendKeys(prop.getProperty("username"));
-        driver.findElement(By.id("user_pass")).sendKeys(prop.getProperty("password"));
-        driver.findElement(By.id("submit")).click();
-        
-        driver.get(baseUrl + "/oc-admin/index.php?page=items&action=post");
+    public void publishNewListing(WebDriver driver, Hashtable<String, String> hashtable, List<String> listImages) throws Exception{
+          
         new Select(driver.findElement(By.id("select_1"))).selectByValue("2");
         new Select(driver.findElement(By.id("select_2"))).selectByValue("31");
         
@@ -126,6 +146,29 @@ public class Anunciamex {
         driver.findElement(By.id("title[es_ES]")).sendKeys(hashtable.get("description"));
         driver.findElement(By.id("description[es_ES]")).sendKeys(hashtable.get("text"));
         
+        driver.findElement(By.id("price")).sendKeys(hashtable.get("price"));
+        
+        
+        driver.findElement(By.id("region")).sendKeys(hashtable.get("state"));
+        driver.findElement(By.id("city")).sendKeys(hashtable.get("municipio"));
+        
+        uploadImages(driver, listImages);
+        
+        driver.findElement(By.id("meta_new-custom-field")).sendKeys(hashtable.get("phone")); //auto submit
+        Thread.sleep(1500);
+        if(driver.getCurrentUrl().contains("post")){
+            driver.findElement(By.xpath("//*[@class='form-actions']/input")).click();
+        }
+
+        driver.get(baseUrl + "/oc-admin/index.php?page=items&action=post");
+    }
+    
+    public void uploadImages(WebDriver driver, List<String> listImages) throws Exception{
+        for(int i=0; i<listImages.size(); i++){
+            driver.findElement(By.xpath(".//*[@id='photos']/div[" + (i+1) + "]/input")).sendKeys(listImages.get(i));;
+            Thread.sleep(300);
+        }
+        
     }
     
     public String searchAndReplace(String pool, String needle, String replaceWith) {
@@ -134,6 +177,40 @@ public class Anunciamex {
             pool = pool.replaceAll(search, replaceWith);
         }
         return pool;
+    }
+    
+    public List<String> downloadImages(String urlImage) throws Exception {
+ 
+        String path = System.getProperty("user.dir")+ "\\src\\test\\resources\\temp\\";
+        downloadTestFile.setLocalDownloadPath(path);
+        List<String> images = new ArrayList<String>();
+
+        int i = 1;      
+        while(i<=4){
+            
+            String image = "file" + i + ".png";
+            String urlPath = urlImage + "/" + image;
+            
+            urlChecker.setURIToCheck(urlPath);
+            urlChecker.setHTTPRequestMethod(RequestMethod.GET);
+            
+            if(urlChecker.getHTTPStatusCode() != 404){
+                String downloadedImageAbsoluteLocation = downloadTestFile.downloadImage(urlPath);
+                if(new File(downloadedImageAbsoluteLocation).exists()){
+                    images.add(downloadedImageAbsoluteLocation);
+                    i++;
+                }
+                else{
+                    break;
+                }
+                    
+            }
+            else{
+                break;
+            }
+                    
+        }
+        return images;
     }
 
 }

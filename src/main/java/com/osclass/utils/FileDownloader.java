@@ -191,7 +191,10 @@ public class FileDownloader {
     private String downloader(String directURL) throws IOException, NullPointerException, URISyntaxException {
 
         URL fileToDownload = new URL(directURL);
-        File downloadedFile = new File(this.localDownloadPath + fileToDownload.getFile().replaceFirst("/|\\\\", ""));
+        //File downloadedFile = new File(this.localDownloadPath + fileToDownload.getFile().replaceFirst("/|\\\\", ""));
+        File downloadedFile = new File(this.localDownloadPath + fileToDownload.getFile().substring(fileToDownload.getFile().lastIndexOf("/")));
+        
+        
         if (downloadedFile.canWrite() == false) downloadedFile.setWritable(true);
  
         HttpClient client = new DefaultHttpClient();

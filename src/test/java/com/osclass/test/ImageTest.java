@@ -1,6 +1,8 @@
 package com.osclass.test;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
@@ -22,10 +24,10 @@ public class ImageTest {
 	@BeforeTest
     public void setup() throws Exception {
     	urlChecker = new URLStatusChecker(driver);
-    	//downloadTestFile = new FileDownloader(driver);
+    	downloadTestFile = new FileDownloader(driver);
     }
 	
-	@Test
+	
 	public void statusCode404FromString() throws Exception {
 	    urlChecker.setURIToCheck("http://anunciamex.mx/items/images/ffUnbBSsuh/file5.png");
 	    urlChecker.setHTTPRequestMethod(RequestMethod.GET);
@@ -43,14 +45,39 @@ public class ImageTest {
 	    Assert.assertEquals(downloadTestFile.getHTTPStatusOfLastDownloadAttempt(), 200);
 	}
 	 
-	
-	public void downloadAnImage() throws Exception {
-	    String urlPath = "http://anunciamex.mx/items/images/ffUnbBSsuh/file1.png";
-	    String downloadedImageAbsoluteLocation = downloadTestFile.downloadImage(urlPath);
-	    
-	    Assert.assertEquals(new File(downloadedImageAbsoluteLocation).exists(), true);
-	    Assert.assertEquals(downloadTestFile.getHTTPStatusOfLastDownloadAttempt(), 200);
+	@Test
+	public void downloadImages() throws Exception {
+	    String itemCode = "nsJoMXGjsj";
+	    String path = System.getProperty("user.dir")+ "\\src\\test\\resources\\temp\\";
+	    downloadTestFile.setLocalDownloadPath(path);
+	    List<String> images = new ArrayList<String>();
 
+	    int i = 1;	    
+	    while(i<=4){
+	        
+	        String image = "file" + i + ".png";
+	        String urlPath = "http://www.anunciamex.mx/items/images/" + itemCode + "/" + image;
+	        
+	        urlChecker.setURIToCheck(urlPath);
+	        urlChecker.setHTTPRequestMethod(RequestMethod.GET);
+	        
+	        if(urlChecker.getHTTPStatusCode() != 404){
+	            String downloadedImageAbsoluteLocation = downloadTestFile.downloadImage(urlPath);
+	            if(new File(downloadedImageAbsoluteLocation).exists()){
+	                images.add(image);
+	                i++;
+	            }
+	            else{
+	                break;
+	            }
+	                
+	        }
+	        else{
+	            break;
+	        }
+	      	        
+	    }
+	   
 	}
 	
 }
