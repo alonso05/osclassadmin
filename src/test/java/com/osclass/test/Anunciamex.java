@@ -24,6 +24,7 @@ public class Anunciamex {
     FileDownloader downloadTestFile;
     Properties prop = Constants.getProperties("config.properties"); 
     String baseUrl;
+    String categorySelector;
     
     public Anunciamex(){}
     
@@ -34,8 +35,8 @@ public class Anunciamex {
     
     public void navigate() throws Exception{
         SimpleDate limitDate = new SimpleDate();
-        //limitDate.advanceDay(-1); //hasta ayer
-        limitDate.advanceDay(-35); //hasta ayer
+        limitDate.advanceDay(-1); //hasta ayer
+        //limitDate.advanceDay(-35); //hasta ayer
         System.out.println("Limit Date - " + limitDate.getDay() + " " + limitDate.getMonthString());
         
         baseUrl = prop.getProperty("base_url");
@@ -43,6 +44,10 @@ public class Anunciamex {
         String category = "/listing.php?key=&page=0&category=Autos+y+Camionetas&state=Todo+Mexico";
         ///listing.php?key=&page=0&category=Autos+y+Camionetas&state=Todo+Mexico
         ///listing.php?key=&page=0&category=Motocicletas&state=Todo+Mexico
+        //listing.php?key=&page=0&category=Casas+y+Departamentos&state=Todo+Mexico
+        //listing.php?key=&page=0&category=Telefonos&state=Todo+Mexico
+        categorySelector = category.substring((category.indexOf("category=")+9), category.indexOf("&state"));
+        
         WebDriver driverNav = new FirefoxDriver();
         WebDriver driverListing = new FirefoxDriver();
         WebDriver driverOsclass = new FirefoxDriver();
@@ -118,7 +123,10 @@ public class Anunciamex {
         driver.get(listingUrl);
         
         String location = driver.findElement(By.xpath("//*[@class='itemUbi']")).getText();
-        hashtable.put("municipio", location.split(",")[0].trim());
+        String municipio = location.split(",")[0].trim();
+        if(municipio.contains("Tlajomulco"))
+            municipio = "Tlajomulco de Zúñiga";
+        hashtable.put("municipio", municipio);
         hashtable.put("state", location.split(",")[1].trim());
         
         String price = driver.findElement(By.xpath("//*[@class='itemInfo']/h3")).getText().trim();
@@ -126,7 +134,7 @@ public class Anunciamex {
         hashtable.put("price", price);
         
         String text = driver.findElement(By.xpath("//*[@class='itemText']")).getText();
-        hashtable.put("text", text);
+        hashtable.put("text", text + " SOLO LLAMADAS");
         
         driver.findElement(By.linkText("Mostrar Teléfono")).click();
         String phone = driver.findElement(By.xpath(".//*[@class='itemPhone']/a")).getText().trim();
@@ -135,10 +143,44 @@ public class Anunciamex {
         return hashtable;
     }
     
+    private void selectCategory(WebDriver driver, String title) throws Exception{
+        switch(categorySelector){
+        case "Autos+y+Camionetas" :
+            new Select(driver.findElement(By.id("select_1"))).selectByValue("2");
+            new Select(driver.findElement(By.id("select_2"))).selectByValue("31");
+            break;
+        case "Motocicletas" :
+            new Select(driver.findElement(By.id("select_1"))).selectByValue("2");
+            new Select(driver.findElement(By.id("select_2"))).selectByValue("33");
+            break;
+        case "Casas+y+Departamentos" :
+            new Select(driver.findElement(By.id("select_1"))).selectByValue("4");
+            if(title.toLowerCase().contains("rent")){
+                if(title.toLowerCase().contains("depa"))
+                    new Select(driver.findElement(By.id("select_2"))).selectByValue("100");
+                else
+                    new Select(driver.findElement(By.id("select_2"))).selectByValue("44");
+            }
+            else{
+                if(title.toLowerCase().contains("depa"))
+                    new Select(driver.findElement(By.id("select_2"))).selectByValue("99");
+                else
+                    new Select(driver.findElement(By.id("select_2"))).selectByValue("43");
+            }
+            break;
+        case "Telefonos" :
+            new Select(driver.findElement(By.id("select_1"))).selectByValue("1");
+            new Select(driver.findElement(By.id("select_2"))).selectByValue("15");
+            break;
+        default :
+            throw new Exception("Category Selector not found");
+        }
+    }
+    
     public void publishNewListing(WebDriver driver, Hashtable<String, String> hashtable, List<String> listImages) throws Exception{
-          
-        new Select(driver.findElement(By.id("select_1"))).selectByValue("2");
-        new Select(driver.findElement(By.id("select_2"))).selectByValue("31");
+        
+       
+        selectCategory(driver, hashtable.get("description"));
         
         driver.findElement(By.id("contactName")).sendKeys("Edgar");
         driver.findElement(By.id("contactEmail")).sendKeys("edgar.hdz99@gmail.com");
